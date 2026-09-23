@@ -6,7 +6,7 @@ sudo modprobe r8168 (добавляет драйверы)
 sudo lsmod | grep r8168 (проверка что все работает)
 sudo nano /etc/network/interfaces
 ПРИМЕР nano
-
+СТАТИКА
 auto enp2s0
 iface enp2s0 inet static
 address 10.202.49.203 (меняем на свой)
@@ -14,4 +14,24 @@ netmask 255.255.255.0
 gateway 10.202.49.2 (меняем на свой)
 dns-nameservers 172.16.4.5 8.8.8.8 (1.1.1.1 или 8.8.8.8)
 
+ДХСП
+auto enp2s0
+iface enp2s0 inet dhcp
+
+ЕСЛИ ЕСТЬ МОСТ 
+
+auto lo
+iface lo inet loopback
+
+auto enp2s0
+iface enp2s0 inet manual
+
+auto vmbr0
+iface vmbr0 inet dhcp
+    bridge-ports enp2s0
+    bridge-stp off
+    bridge-fd 0
+
+
 sudo systemctl enable networking
+sudo systemctl start networking
