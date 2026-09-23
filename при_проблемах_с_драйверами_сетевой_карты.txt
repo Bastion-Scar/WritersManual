@@ -6,6 +6,7 @@ sudo modprobe r8168 (добавляет драйверы)
 sudo lsmod | grep r8168 (проверка что все работает)
 sudo nano /etc/network/interfaces
 ПРИМЕР nano
+
 СТАТИКА
 auto enp2s0
 iface enp2s0 inet static
