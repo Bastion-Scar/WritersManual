@@ -1,19 +1,22 @@
+Настройка VNC в режиме реального времени
 1. Установить необходимые пакеты
 
-Админ выполняет:
 
 sudo apt update
 sudo apt install -y \
-    tigervnc-standalone-server \
+    x11vnc \
     tigervnc-tools \
     openbox \
     gnome-calculator \
     iptables-persistent
 
-Проверить TigerVNC:
+Проверить x11vnc:
 
-vncserver --version
+x11vnc -version
 
+Проверить TigerVNC Viewer:
+
+xtigervncviewer --help
 
 
 2. Создать пользователя kiosk
@@ -31,13 +34,13 @@ sudo usermod -aG video,audio kiosk
 id kiosk
 
 
-
-3. Создать каталоги TigerVNC
-sudo mkdir -p /home/kiosk/.config/tigervnc
+3. Создать каталоги
+sudo mkdir -p /home/kiosk/.vnc
 sudo mkdir -p /home/kiosk/.config/openbox
 
 Выдать владельца:
 
+sudo chown -R kiosk:kiosk /home/kiosk/.vnc
 sudo chown -R kiosk:kiosk /home/kiosk/.config
 
 
@@ -46,147 +49,138 @@ sudo chown -R kiosk:kiosk /home/kiosk/.config
 
 От имени kiosk:
 
-sudo -u kiosk vncpasswd
+sudo -u kiosk x11vnc -storepasswd /home/kiosk/.vnc/passwd
 
-Задаём VNC-пароль.
+Вводим пароль:
 
-Если спросит:
+Enter VNC password:
+Verify password:
+Write password to /home/kiosk/.vnc/passwd?  [y]/n
 
-Would you like to enter a view-only password?
+Отвечаем:
 
-отвечаем:
-
-n
-
-После этого пароль будет храниться в:
-
-/home/kiosk/.config/tigervnc/passwd
+y
 
 Проверить:
 
-sudo ls -l /home/kiosk/.config/tigervnc/passwd
+sudo ls -l /home/kiosk/.vnc/passwd
+
+Должно быть примерно:
+
+-rw------- 1 kiosk kiosk ... passwd
 
 
 
-5. Привязать display :9 к kiosk
+5. Проверить физический X-дисплей
 
-Открываем:
+Проверить X-сокеты:
 
-sudo nano /etc/tigervnc/vncserver.users
+sudo ls -la /tmp/.X11-unix/
 
-Добавляем:
+Должен присутствовать:
 
-:9=kiosk
+X0
 
-Либо одной командой:
+Проверить Xorg:
 
-echo ':9=kiosk' | sudo tee -a /etc/tigervnc/vncserver.users
+ps aux | grep '[X]org'
 
-Проверяем:
+Проверить графическую сессию:
 
-grep ':9=' /etc/tigervnc/vncserver.users
+who
 
-Должно быть:
+Проверить X-сокет:
 
-:9=kiosk
-Важно
-
-Если в файле уже есть:
-
-:9=...
-
-не надо создавать вторую строку.
-
-Тогда:
-
-sudo sed -i '/^:9=/d' /etc/tigervnc/vncserver.users
-echo ':9=kiosk' | sudo tee -a /etc/tigervnc/vncserver.users
-
-
-
-6. Конфигурация TigerVNC
-
-Создаём:
-
-sudo tee /home/kiosk/.config/tigervnc/config.pl > /dev/null <<'EOF'
-$rfbport=2016;
-$localhost="no";
-EOF
-
-Выставляем владельца:
-
-sudo chown kiosk:kiosk /home/kiosk/.config/tigervnc/config.pl
-
-Проверяем:
-
-sudo cat /home/kiosk/.config/tigervnc/config.pl
-
-Должно быть:
-
-$rfbport=2016;
-$localhost="no";
-Почему нет $session
-
-Мы не указываем GNOME-сессию.
-
-Нам нужен собственный xstartup, который запустит Openbox.
+sudo test -S /tmp/.X11-unix/X0 && echo "X0 работает"
 
 
 
 
-7. Создать VNC xstartup
+6. Проверить DISPLAY
 
-Создаём:
+Физический рабочий стол использует:
+
+DISPLAY=:0
+
+Проверить работу X:
+
+sudo -u kiosk env DISPLAY=:0 xset q
+
+Если выводятся:
+
+Keyboard Control:
+Pointer Control:
+Screen Saver:
+
+значит X11 работает.
+
+
+
+
+
+7. Настроить Openbox
+
+Создать:
 
 sudo tee /home/kiosk/.config/openbox/autostart > /dev/null <<'EOF'
 xset s off
 xset -dpms
 xset s noblank
 
-if [ "$DISPLAY" = ":9" ]; then
-    while true; do
-        dbus-run-session -- /usr/bin/gnome-calculator
-        sleep 2
-    done &
-else
-    while true; do
-        /usr/bin/gnome-calculator
-        sleep 2
-    done &
-fi
+while true; do
+    dbus-run-session -- /usr/bin/gnome-calculator
+    sleep 2
+done &
 EOF
 
 Права:
 
-sudo chown kiosk:kiosk /home/kiosk/.config/tigervnc/xstartup
-sudo chmod +x /home/kiosk/.config/tigervnc/xstartup
+sudo chown kiosk:kiosk /home/kiosk/.config/openbox/autostart
+sudo chmod +x /home/kiosk/.config/openbox/autostart
 
-Проверяем:
+Проверить:
 
-sudo ls -l /home/kiosk/.config/tigervnc/xstartup
-
-Должно быть:
-
--rwxr-xr-x kiosk kiosk ... xstartup
+sudo cat /home/kiosk/.config/openbox/autostart
 
 
 
-8. Настроить Openbox
 
-Создаём:
+8. Настроить запуск приложения
 
-sudo tee /home/kiosk/.config/openbox/autostart > /dev/null <<'EOF'
+Для тестирования используется GNOME Calculator.
+
+Файл:
+
+/home/kiosk/.config/openbox/autostart
+
+содержит:
+
+while true; do
+    dbus-run-session -- /usr/bin/gnome-calculator
+    sleep 2
+done &
+
+Для kiosk-браузера:
+
+sudo nano /home/kiosk/.config/openbox/autostart
+
+Указать:
+
 xset s off
 xset -dpms
 xset s noblank
 
-if [ "$DISPLAY" = ":9" ]; then
-    while true; do
-        dbus-run-session -- /usr/bin/gnome-calculator
-        sleep 2
-    done &
-fi
-EOF
+while true; do
+    dbus-run-session -- /usr/bin/yandex-browser \
+        --kiosk \
+        --no-first-run \
+        --no-default-browser-check \
+        "http://нужный-адрес"
+
+    sleep 2
+done &
+
+После изменения:
 
 sudo chown kiosk:kiosk /home/kiosk/.config/openbox/autostart
 sudo chmod +x /home/kiosk/.config/openbox/autostart
@@ -194,13 +188,14 @@ sudo chmod +x /home/kiosk/.config/openbox/autostart
 
 
 
-9. Очень важно: удалить старый GNOME autostart
 
-Если раньше создавался такой файл:
+9. Удалить старый GNOME autostart
+
+Если существует:
 
 /home/kiosk/.config/autostart/calculator.desktop
 
-его надо удалить, иначе он может дополнительно запускать калькулятор.
+удалить:
 
 sudo rm -f /home/kiosk/.config/autostart/calculator.desktop
 
@@ -211,42 +206,25 @@ sudo find /home/kiosk/.config/autostart -maxdepth 1 -type f -print 2>/dev/null
 
 
 
-10. Если существует старый VNC xstartup
+10. Проверить порт 2016
+sudo ss -lntp | grep 2016
 
-Проверить:
-
-sudo ls -la /home/kiosk/.config/tigervnc/
-
-Нас интересуют:
-
-config.pl
-passwd
-xstartup
-
-Если там есть старые скрипты, которые запускали GNOME Flashback, их нужно убрать, чтобы они не конфликтовали.
-
-Например, не должно быть необходимости в:
-
-session=gnome
-gnome-flashback
-gnome-session
-
-для нашего :9.
+Порт должен быть свободен перед запуском x11vnc.
 
 
 
 
 11. Настроить firewall
 
-Открываем TCP 2016:
+Открыть TCP 2016:
 
 sudo iptables -I INPUT -p tcp --dport 2016 -j ACCEPT
 
-Проверяем:
+Проверить:
 
 sudo iptables -L INPUT -n --line-numbers | grep 2016
 
-Должно появиться правило примерно:
+Должно появиться:
 
 ACCEPT ... tcp ... tcp dpt:2016
 
@@ -264,68 +242,83 @@ sudo iptables-save | grep 2016
 
 -A INPUT -p tcp -m tcp --dport 2016 -j ACCEPT
 
-Теперь правило сохранено и не пропадёт после перезагрузки.
+
+
+13. Первый запуск x11vnc
+
+Запустить вручную:
+
+sudo x11vnc \
+    -display :0 \
+    -auth /run/user/1001/gdm/Xauthority \
+    -rfbport 2016 \
+    -rfbauth /home/kiosk/.vnc/passwd \
+    -forever \
+    -shared \
+    -noshm
+
+Параметры:
+
+-display :0
+
+Физический X11-дисплей.
+
+-auth /run/user/1001/gdm/Xauthority
+
+Авторизация доступа к Xorg.
+
+-rfbport 2016
+
+VNC-порт.
+
+-rfbauth /home/kiosk/.vnc/passwd
+
+VNC-пароль.
+
+-forever
+
+x11vnc продолжает работать после отключения клиента.
+
+-shared
+
+Разрешает несколько подключений.
+
+-noshm
+
+Отключает MIT-SHM.
 
 
 
 
 
-13. Первый запуск VNC
+14. Проверить порт
 
-Перед systemd можно проверить руками.
-
-Запускаем:
-
-sudo -u kiosk tigervncserver :9 -rfbport 2016 -localhost no
-
-Должно появиться что-то вроде:
-
-New Xtigervnc server 'kiosk.utz.local:9 (kiosk)' on port 2016 for display :9.
-
-Проверяем:
+В другом SSH-сеансе:
 
 sudo ss -tlnp | grep 2016
 
-Ожидаем:
+Ожидается:
 
-0.0.0.0:2016
-
-
-
-
-14. Проверить X-дисплей
-sudo -u kiosk env DISPLAY=:9 xset q
-
-Если выводится:
-
-Keyboard Control:
-...
-Pointer Control:
-...
-Screen Saver:
-...
-
-значит :9 работает.
-
-Проверить X-сокет:
-
-sudo ls -la /tmp/.X11-unix/
-
-Должен быть:
-
-X9
+LISTEN ... 0.0.0.0:2016 ...
 
 
 
 
 15. Проверить процессы
-ps -fu kiosk | grep -E 'Xtigervnc|openbox|gnome-calculator' | grep -v grep
+ps aux | grep '[x]11vnc'
 
-Должны присутствовать примерно:
+Ожидается процесс:
 
-Xtigervnc :9
-openbox-session
-gnome-calculator
+/usr/bin/x11vnc -display :0 ...
+
+Проверить Openbox:
+
+ps -fu kiosk | grep openbox | grep -v grep
+
+Проверить калькулятор:
+
+ps -fu kiosk | grep gnome-calculator | grep -v grep
+
 
 
 
@@ -333,122 +326,174 @@ gnome-calculator
 
 На клиенте:
 
-vncviewer IP_ВИРТУАЛКИ:2016
+xtigervncviewer 10.202.49.105:2016
 
-В нашем случае:
+или:
 
-vncviewer 10.202.49.79:2016
+vncviewer 10.202.49.105:2016
 
-Вводим VNC-пароль.
+Ввести VNC-пароль.
 
-Должен открыться:
-
-┌──────────────────────────────────────────────┐
-│                                              │
-│                                              │
-│             GNOME Calculator                 │
-│                                              │
-│                                              │
-└──────────────────────────────────────────────┘
-
-Без GNOME-панели.
+На экране должен отображаться текущий физический рабочий стол.
 
 
 
 
 
-17. Перевести VNC на systemd
+17. Проверить управление
+Проверить мышь
+Подключиться через VNC.
+Переместить мышь.
+Убедиться, что движение видно на физическом мониторе.
+Проверить клавиатуру
+Кликнуть по приложению через VNC.
+Набрать текст.
+Убедиться, что ввод происходит на физическом компьютере.
+Проверить изображение
+Открыть приложение на физическом мониторе.
+Убедиться, что оно появилось в VNC.
+Открыть приложение через VNC.
+Убедиться, что оно появилось на физическом мониторе.
 
-Когда ручной запуск проверен и всё работает:
-
-Остановить ручной сервер:
-
-sudo -u kiosk tigervncserver -kill :9
-
-Запустить через systemd:
-
-sudo systemctl enable --now tigervncserver@:9.service
-sudo systemctl start tigervncserver@:9.service
-
-Теперь VNC автоматически стартует при загрузке.
 
 
 
-18. Проверить systemd
-sudo systemctl status tigervncserver@:9.service --no-pager
+18. Создать systemd-сервис
 
-Нужно увидеть:
+Создать:
 
-Active: active (running)
+sudo nano /etc/systemd/system/x11vnc.service
 
-И порт:
+Вставить:
 
+[Unit]
+Description=x11vnc - Share physical X11 desktop
+After=display-manager.service
+Wants=display-manager.service
+
+[Service]
+Type=simple
+User=root
+
+ExecStart=/usr/bin/x11vnc \
+    -display :0 \
+    -auth /run/user/1001/gdm/Xauthority \
+    -rfbport 2016 \
+    -rfbauth /home/kiosk/.vnc/passwd \
+    -forever \
+    -shared \
+    -noshm \
+    -loop
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
+
+Сохранить файл.
+
+
+
+19. Перечитать systemd
+sudo systemctl daemon-reload
+sudo systemctl enable x11vnc.service
+sudo systemctl start x11vnc.service
+
+Проверить:
+
+sudo systemctl status x11vnc.service
+
+
+
+
+20. Проверить порт
 sudo ss -tlnp | grep 2016
 
-Ожидаем:
+Ожидается:
 
-LISTEN ... 0.0.0.0:2016 ... Xtigervnc
+LISTEN ... 0.0.0.0:2016 ...
 
 
-19. После перезагрузки
 
-Перезагружаем:
+21. Проверить после перезагрузки
+
+Перезагрузить систему:
 
 sudo reboot
 
-После загрузки проверяем:
+После загрузки проверить:
+
+sudo systemctl status x11vnc.service --no-pager
+
+Проверить порт:
 
 sudo ss -tlnp | grep 2016
-ps -fu kiosk | grep -E 'Xtigervnc|openbox|gnome-calculator' | grep -v grep
 
-Если всё есть — подключаемся:
+Проверить X:
 
-vncviewer 10.202.49.79:2016
+sudo ls -la /tmp/.X11-unix/
+
+Должен присутствовать:
+
+X0
+
+Проверить x11vnc:
+
+ps aux | grep '[x]11vnc'
+
+Проверить Openbox:
+
+ps -fu kiosk | grep openbox | grep -v grep
+
+Проверить приложение:
+
+ps -fu kiosk | grep -E 'yandex-browser|gnome-calculator' | grep -v grep
 
 
 
 
-20. Итоговая схема установки
+22. Подключение после перезагрузки
 
-В итоге админ сделал только следующее:
+На клиенте:
 
-Установил:
+xtigervncviewer АЙПИ:2016
+
+Ввести VNC-пароль.
+
+27. Итоговая схема
+                    WEBKIOSK
+                       │
+                       │
+                 Xorg DISPLAY :0
+                       │
+              ┌────────┴────────┐
+              │                 │
+        Физический         x11vnc
+         монитор              │
+              │                │
+              │           TCP 2016
+              │                │
+              │                ↓
+              │       TigerVNC Viewer
+              │                │
+              └───────┬────────┘
+                      │
+                один рабочий стол
+
+Компоненты:
+
+Xorg :0
     ↓
-TigerVNC
 Openbox
-GNOME Calculator
-iptables-persistent
     ↓
-Создал пользователя kiosk
+kiosk application
     ↓
-Создал VNC password
+x11vnc
     ↓
-:9 = kiosk
+TCP 2016
     ↓
-VNC :9 → TCP 2016
-    ↓
-xstartup → Openbox
-    ↓
-Openbox autostart
-    ↓
-DISPLAY=:9
-    ↓
-один GNOME Calculator
-    ↓
-systemd
-    ↓
-автозапуск после reboot
-
-
-
-
-
-
-
-
-
-
-
+TigerVNC Viewer
 
 
 
@@ -460,59 +505,100 @@ systemd
 
 
 Если делать совсем коротко — админский чек-лист
+
+Установка:
+
 sudo apt update
-sudo apt install -y tigervnc-standalone-server tigervnc-tools openbox gnome-calculator iptables-persistent
+sudo apt install -y x11vnc tigervnc-tools openbox gnome-calculator iptables-persistent
+
+Пользователь:
 
 sudo adduser kiosk
 sudo usermod -aG video,audio kiosk
 
-sudo mkdir -p /home/kiosk/.config/tigervnc
+Каталоги:
+
+sudo mkdir -p /home/kiosk/.vnc
 sudo mkdir -p /home/kiosk/.config/openbox
+sudo chown -R kiosk:kiosk /home/kiosk/.vnc
 sudo chown -R kiosk:kiosk /home/kiosk/.config
 
-sudo -u kiosk vncpasswd
-echo ':9=kiosk' | sudo tee -a /etc/tigervnc/vncserver.users
-sudo tee /home/kiosk/.config/tigervnc/config.pl > /dev/null <<'EOF'
-$rfbport=2016;
-$localhost="no";
-EOF
-sudo tee /home/kiosk/.config/tigervnc/xstartup > /dev/null <<'EOF'
-#!/bin/sh
-export DISPLAY=:9
-xset s off
-xset -dpms
-xset s noblank
-exec /usr/bin/openbox-session
-EOF
+Пароль:
+
+sudo -u kiosk x11vnc -storepasswd /home/kiosk/.vnc/passwd
+
+Openbox:
+
 sudo tee /home/kiosk/.config/openbox/autostart > /dev/null <<'EOF'
 xset s off
 xset -dpms
 xset s noblank
 
-if [ "$DISPLAY" = ":9" ]; then
-    exec dbus-run-session -- /usr/bin/gnome-calculator
-fi
-
 while true; do
-    /usr/bin/gnome-calculator
+    dbus-run-session -- /usr/bin/gnome-calculator
     sleep 2
 done &
 EOF
-sudo chown -R kiosk:kiosk /home/kiosk/.config
-sudo chmod +x /home/kiosk/.config/tigervnc/xstartup
+
+sudo chown kiosk:kiosk /home/kiosk/.config/openbox/autostart
 sudo chmod +x /home/kiosk/.config/openbox/autostart
 
+Autostart:
+
 sudo rm -f /home/kiosk/.config/autostart/calculator.desktop
+
+Сервис:
+
+sudo systemctl disable --now tigervncserver@:9.service
+sudo -u kiosk tigervncserver -kill :9 2>/dev/null || true
+
+Firewall:
 
 sudo iptables -I INPUT -p tcp --dport 2016 -j ACCEPT
 sudo netfilter-persistent save
 
-sudo systemctl enable --now tigervncserver@:9.service
+Systemd:
+
+sudo tee /etc/systemd/system/x11vnc.service > /dev/null <<'EOF'
+[Unit]
+Description=x11vnc - Share physical X11 desktop
+After=display-manager.service
+Wants=display-manager.service
+
+[Service]
+Type=simple
+User=root
+
+ExecStart=/usr/bin/x11vnc \
+    -display :0 \
+    -auth /run/user/1001/gdm/Xauthority \
+    -rfbport 2016 \
+    -rfbauth /home/kiosk/.vnc/passwd \
+    -forever \
+    -shared \
+    -noshm \
+    -loop
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
+EOF
+
+Запуск:
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now x11vnc.service
+sudo systemctl start x11vnc.service
 
 Проверка:
 
+sudo systemctl status x11vnc.service --no-pager
 sudo ss -tlnp | grep 2016
+sudo ls -la /tmp/.X11-unix/
+ps aux | grep '[x]11vnc'
 
-И подключение:
+Подключение:
 
-vncviewer IP_ВИРТУАЛКИ:2016
+xtigervncviewer 10.202.49.105:2016
