@@ -71,3 +71,13 @@ gsettings set org.gnome.desktop.interface font-name "Comic Sans MS 11"
 sudo nano ~/.bashrc
 в самый низ
 PS1="❤️ Chara | LV: 19 | HP: 92 \w $ " 
+
+
+
+цвета в терминале 
+nano ~/.config/kitty/kitty.conf
+
+foreground #ff0000
+background #120008
+background_opacity 0.85
+cursor #ff0050
