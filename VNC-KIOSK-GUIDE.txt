@@ -29,9 +29,11 @@ sudo adduser kiosk
 
 sudo usermod -aG video,audio kiosk
 
-Проверить:
-
-id kiosk
+sudo nano /etc/gdm3/custom.conf
+[daemon]
+AutomaticLoginEnable = true
+AutomaticLogin = kiosk
+DefaultSession = openbox
 
 
 3. Создать каталоги
