@@ -517,6 +517,11 @@ sudo apt install -y x11vnc tigervnc-tools openbox gnome-calculator iptables-pers
 
 sudo adduser kiosk
 sudo usermod -aG video,audio kiosk
+sudo nano /etc/gdm3/custom.conf
+[daemon]
+AutomaticLoginEnable = true
+AutomaticLogin = kiosk
+DefaultSession = openbox
 
 Каталоги:
 
