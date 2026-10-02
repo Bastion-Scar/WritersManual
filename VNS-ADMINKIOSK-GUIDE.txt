@@ -1,0 +1,35 @@
+Настройка VNC для adminkiosk на Debian 13
+
+1. Установить:
+
+sudo apt update
+sudo apt install -y tigervnc-standalone-server tigervnc-tools gnome-session
+
+2. Назначить пользователя:
+
+sudo nano /etc/tigervnc/vncserver.users
+:8=adminkiosk
+
+3. Создать конфигурацию:
+
+sudo -u adminkiosk mkdir -p /home/adminkiosk/.config/tigervnc
+sudo nano /home/adminkiosk/.config/tigervnc/config
+session=gnome
+geometry=1920x1080
+localhost=no
+rfbport=2015
+
+4. Задать пароль VNC:
+
+sudo -u adminkiosk tigervncpasswd
+
+5. Включить systemd и запустить VNC:
+
+sudo systemctl enable --now tigervncserver@:8.service
+
+6. Проверить:
+
+sudo systemctl status tigervncserver@:8.service
+sudo ss -lntp | grep 2015
+
+Подключение: xtigervncviewer IP-АДРЕС:2015.
