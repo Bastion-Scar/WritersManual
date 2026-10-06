@@ -122,7 +122,7 @@ Screen Saver:
 
 
 
-7. Настроить Openbox
+7. Настроить Openbox (ЕСЛИ ПРИЛОЖЕНИЕ)
 
 Создать:
 
@@ -149,20 +149,7 @@ sudo cat /home/kiosk/.config/openbox/autostart
 
 
 
-8. Настроить запуск приложения
-
-Для тестирования используется GNOME Calculator.
-
-Файл:
-
-/home/kiosk/.config/openbox/autostart
-
-содержит:
-
-while true; do
-    dbus-run-session -- /usr/bin/gnome-calculator
-    sleep 2
-done &
+8. Настроить Openbox (ЕСЛИ САЙТ)
 
 Для kiosk-браузера:
 
