@@ -36,7 +36,7 @@ AutomaticLogin = kiosk
 DefaultSession = openbox
 
 
-3. Создать каталоги
+3. Создать каталоги и удалить keyring
 sudo mkdir -p /home/kiosk/.vnc
 sudo mkdir -p /home/kiosk/.config/openbox
 
@@ -45,7 +45,9 @@ sudo mkdir -p /home/kiosk/.config/openbox
 sudo chown -R kiosk:kiosk /home/kiosk/.vnc
 sudo chown -R kiosk:kiosk /home/kiosk/.config
 
-
+sudo apt purge -y gnome-keyring
+sudo rm -rf /home/kiosk/.local/share/keyrings
+sudo chown -R kiosk:kiosk /home/kiosk
 
 4. Создать пароль VNC
 
@@ -172,15 +174,12 @@ xset s off
 xset -dpms
 xset s noblank
 
-while true; do
-    dbus-run-session -- /usr/bin/yandex-browser \
-        --kiosk \
-        --no-first-run \
-        --no-default-browser-check \
-        "http://нужный-адрес"
-
-    sleep 2
-done &
+/usr/bin/yandex-browser-stable \
+    --kiosk \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-session-crashed-bubble \
+    https://stand.master.utz.ru:8006/
 
 После изменения:
 
@@ -530,6 +529,10 @@ sudo mkdir -p /home/kiosk/.config/openbox
 sudo chown -R kiosk:kiosk /home/kiosk/.vnc
 sudo chown -R kiosk:kiosk /home/kiosk/.config
 
+sudo apt purge -y gnome-keyring
+sudo rm -rf /home/kiosk/.local/share/keyrings
+sudo chown -R kiosk:kiosk /home/kiosk
+
 Пароль:
 
 sudo -u kiosk x11vnc -storepasswd /home/kiosk/.vnc/passwd
@@ -541,10 +544,12 @@ xset s off
 xset -dpms
 xset s noblank
 
-while true; do
-    dbus-run-session -- /usr/bin/gnome-calculator
-    sleep 2
-done &
+/usr/bin/yandex-browser-stable \
+    --kiosk \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-session-crashed-bubble \
+    https://stand.master.utz.ru:8006/
 EOF
 
 sudo chown kiosk:kiosk /home/kiosk/.config/openbox/autostart
