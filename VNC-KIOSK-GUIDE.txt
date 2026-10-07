@@ -449,46 +449,26 @@ xtigervncviewer АЙПИ:2016
 
 Ввести VNC-пароль.
 
-27. Итоговая схема
-                    WEBKIOSK
-                       │
-                       │
-                 Xorg DISPLAY :0
-                       │
-              ┌────────┴────────┐
-              │                 │
-        Физический         x11vnc
-         монитор              │
-              │                │
-              │           TCP 2016
-              │                │
-              │                ↓
-              │       TigerVNC Viewer
-              │                │
-              └───────┬────────┘
-                      │
-                один рабочий стол
+23. ЭКСТРА. если на клавиатуре вводвишь английскую букву но она заменяется на русскую.
+sudo nano /etc/systemd/system/set-keymap-kiosk.service
 
-Компоненты:
+[Unit]
+Description=Set keyboard layout for kiosk
+After=graphical.target
 
-Xorg :0
-    ↓
-Openbox
-    ↓
-kiosk application
-    ↓
-x11vnc
-    ↓
-TCP 2016
-    ↓
-TigerVNC Viewer
+[Service]
+Type=oneshot
+User=kiosk
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/kiosk/.Xauthority
+ExecStart=/usr/bin/setxkbmap -layout us,ru -option grp:alt_shift_toggle
+RemainAfterExit=yes
 
+[Install]
+WantedBy=graphical.target
 
-
-
-
-
-
+sudo systemctl daemon-reload
+sudo systemctl enable --now set-keymap-kiosk.service
 
 
 
@@ -601,3 +581,25 @@ ps aux | grep '[x]11vnc'
 Подключение:
 
 xtigervncviewer 10.202.49.105:2016
+
+
+ЭКСТРА. если на клавиатуре вводвишь английскую букву но она заменяется на русскую.
+sudo nano /etc/systemd/system/set-keymap-kiosk.service
+
+[Unit]
+Description=Set keyboard layout for kiosk
+After=graphical.target
+
+[Service]
+Type=oneshot
+User=kiosk
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/kiosk/.Xauthority
+ExecStart=/usr/bin/setxkbmap -layout us,ru -option grp:alt_shift_toggle
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now set-keymap-kiosk.service
